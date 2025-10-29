@@ -1,0 +1,28 @@
+
+---
+
+### `app/main.py`
+
+```python
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimit
+import redis.asyncio as redis
+import asyncio
+
+app = FastAPI(title="High-Traffic API Demo", version="1.0")
+
+@app.on_event("startup")
+async def startup():
+    redis_client = await redis.from_url("redis://redis:6379", encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_client)
+
+@app.get("/")
+async def root():
+    return {"message": "High-Traffic API is live!"}
+
+@app.get("/reports/{id}", dependencies=[Depends(RateLimit("10/minute"))])
+async def get_report(id: str):
+    # Simulate DB + cache
+    await asyncio.sleep(0.05)  # async I/O
+    return {"id": id, "status": "generated", "data": "..." * 100}
